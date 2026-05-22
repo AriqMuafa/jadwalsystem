@@ -1,0 +1,750 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Flowdesk — Productivity Planner</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet" />
+
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        fontFamily: {
+          display: ['"DM Serif Display"', 'serif'],
+          body: ['"DM Sans"', 'sans-serif'],
+        },
+        colors: {
+          sand:   { 50:'#faf8f4', 100:'#f3ede0', 200:'#e8dcc8', 300:'#d9c5a3', 400:'#c5a87a', 500:'#b08f58', 600:'#8f6f3e', 700:'#6e5230', 800:'#4e3a22', 900:'#302215' },
+          ink:    { DEFAULT:'#1a1714', light:'#2e2a26', muted:'#6b6460' },
+          sage:   { DEFAULT:'#5a7a6a', light:'#e8f0ec' },
+          rose:   { DEFAULT:'#c45c5c', light:'#fbeaea' },
+          sky:    { DEFAULT:'#4a7fa8', light:'#e6f0f8' },
+          amber:  { DEFAULT:'#c47a2a', light:'#fdf3e3' },
+        },
+        boxShadow: {
+          card: '0 2px 8px 0 rgba(26,23,20,0.08), 0 0 0 1px rgba(26,23,20,0.05)',
+          'card-hover': '0 6px 24px 0 rgba(26,23,20,0.13), 0 0 0 1px rgba(26,23,20,0.08)',
+          fab: '0 4px 20px 0 rgba(26,23,20,0.25)',
+        },
+        borderRadius: { xl2: '1.25rem' },
+      }
+    }
+  }
+</script>
+
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: 'DM Sans', sans-serif; background: #faf8f4; color: #1a1714; }
+  h1, h2, h3, .font-display { font-family: 'DM Serif Display', serif; }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 4px; height: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #d9c5a3; border-radius: 99px; }
+
+  /* Sidebar */
+  #sidebar { transition: transform 0.35s cubic-bezier(.4,0,.2,1); }
+
+  /* Drag states */
+  .task-card { transition: box-shadow .18s, transform .18s, opacity .18s; cursor: grab; }
+  .task-card:active { cursor: grabbing; }
+  .task-card.dragging { opacity: .45; transform: scale(.97) rotate(-1deg); box-shadow: none; }
+  .kanban-col.drag-over { background: #e8f0ec; border-color: #5a7a6a; }
+  .drop-zone { min-height: 80px; }
+
+  /* Calendar */
+  .cal-day.today { background: #1a1714; color: #faf8f4; border-radius: 50%; }
+  .cal-day.has-task { position: relative; }
+  .cal-day.has-task::after { content:''; position: absolute; bottom: 1px; left: 50%; transform: translateX(-50%); width: 4px; height: 4px; border-radius: 50%; background: #5a7a6a; }
+
+  /* Tag badge animate */
+  @keyframes tagPop { from { transform: scale(.7); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+  .tag-badge { animation: tagPop .2s ease; }
+
+  /* Modal backdrop */
+  #modal-backdrop { transition: opacity .25s; }
+  #modal-box { transition: transform .25s cubic-bezier(.4,0,.2,1), opacity .25s; }
+  #modal-backdrop.hidden #modal-box { transform: translateY(40px) scale(.97); opacity: 0; }
+
+  /* Off-canvas */
+  #offcanvas { transition: transform .32s cubic-bezier(.4,0,.2,1); }
+  #offcanvas-backdrop { transition: opacity .32s; }
+
+  /* FAB pulse */
+  @keyframes fabPulse { 0%,100%{box-shadow:0 4px 20px rgba(26,23,20,.25)} 50%{box-shadow:0 4px 28px rgba(26,23,20,.4)} }
+  #fab { animation: fabPulse 2.8s ease-in-out infinite; }
+
+  /* Priority colors */
+  .priority-high { border-left: 3px solid #c45c5c; }
+  .priority-medium { border-left: 3px solid #c47a2a; }
+  .priority-low { border-left: 3px solid #5a7a6a; }
+
+  /* Tab active */
+  .tab-btn.active { background: #1a1714; color: #faf8f4; }
+  .tab-btn { transition: background .2s, color .2s; }
+
+  /* Checkbox custom */
+  .custom-check { accent-color: #1a1714; }
+
+  /* Quick-move btn */
+  .qm-btn { font-size: .68rem; padding: 2px 7px; border-radius: 99px; border: 1px solid #d9c5a3; background: #faf8f4; color: #6b6460; cursor: pointer; white-space: nowrap; transition: background .15s, color .15s, border-color .15s; }
+  .qm-btn:hover { background: #1a1714; color: #faf8f4; border-color: #1a1714; }
+</style>
+</head>
+<body class="min-h-screen">
+
+<!-- ═══════════════════════════════════════ MOBILE HEADER ═══════════════ -->
+<header class="md:hidden flex items-center justify-between px-4 py-3 bg-sand-50 border-b border-sand-200 sticky top-0 z-30">
+  <button id="hamburger-btn" aria-label="Menu" class="p-2 rounded-lg hover:bg-sand-100 transition-colors">
+    <svg width="22" height="22" fill="none" stroke="#1a1714" stroke-width="2" stroke-linecap="round">
+      <line x1="3" y1="6" x2="19" y2="6"/><line x1="3" y1="11" x2="19" y2="11"/><line x1="3" y1="16" x2="19" y2="16"/>
+    </svg>
+  </button>
+  <span class="font-display text-xl tracking-tight">Flowdesk</span>
+  <div class="w-9"></div>
+</header>
+
+<!-- ═══════════════════════════════════════ OFF-CANVAS BACKDROP ══════════ -->
+<div id="offcanvas-backdrop" class="fixed inset-0 bg-ink/40 z-40 hidden opacity-0 md:hidden" onclick="closeOffCanvas()"></div>
+
+<!-- ═══════════════════════════════════════ OFF-CANVAS SIDEBAR ═══════════ -->
+<div id="offcanvas" class="fixed top-0 left-0 h-full w-72 bg-sand-50 z-50 -translate-x-full shadow-2xl md:hidden overflow-y-auto">
+  <div class="flex items-center justify-between px-5 py-4 border-b border-sand-200">
+    <span class="font-display text-xl">Flowdesk</span>
+    <button onclick="closeOffCanvas()" class="p-1.5 rounded-lg hover:bg-sand-100 transition-colors">
+      <svg width="18" height="18" fill="none" stroke="#1a1714" stroke-width="2" stroke-linecap="round"><line x1="4" y1="4" x2="14" y2="14"/><line x1="14" y1="4" x2="4" y2="14"/></svg>
+    </button>
+  </div>
+  <div class="p-5" id="offcanvas-content"></div>
+</div>
+
+<!-- ═══════════════════════════════════════ DESKTOP HEADER ═══════════════ -->
+<div class="hidden md:flex items-center justify-between px-8 py-4 border-b border-sand-200 bg-sand-50 sticky top-0 z-20">
+  <div class="flex items-center gap-3">
+    <div class="w-8 h-8 rounded-xl bg-ink flex items-center justify-center">
+      <svg width="16" height="16" fill="none" stroke="#faf8f4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="4" width="10" height="11" rx="1"/><line x1="6" y1="8" x2="10" y2="8"/><line x1="6" y1="11" x2="10" y2="11"/><line x1="6" y1="5.5" x2="10" y2="5.5"/>
+      </svg>
+    </div>
+    <span class="font-display text-2xl tracking-tight">Flowdesk</span>
+  </div>
+  <!-- Desktop Add Task Form -->
+  <form id="desktop-form" class="flex gap-2 items-start flex-1 max-w-2xl mx-8" onsubmit="return false;">
+    <div class="flex-1 relative">
+      <input id="desktop-task-input" type="text" placeholder="Tambah tugas baru… (coba ketik 'urgent' atau 'bug')"
+        class="w-full px-4 py-2.5 rounded-xl border border-sand-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-ink/20 focus:border-ink/40 placeholder-sand-400 transition" />
+      <div id="desktop-tags" class="flex flex-wrap gap-1.5 mt-1.5 min-h-0"></div>
+    </div>
+    <select id="desktop-category" class="px-3 py-2.5 rounded-xl border border-sand-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-ink/20 text-ink appearance-none pr-7" style="background-image:url('data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2212%22 height=%228%22 fill=%22none%22%3E%3Cpath d=%22M1 1l5 5 5-5%22 stroke=%22%236b6460%22 stroke-width=%221.5%22 stroke-linecap=%22round%22/%3E%3C/svg%3E');background-repeat:no-repeat;background-position:right 10px center;">
+      <option value="Kerja">Kerja</option>
+      <option value="Pribadi">Pribadi</option>
+      <option value="Belajar">Belajar</option>
+      <option value="Kesehatan">Kesehatan</option>
+    </select>
+    <select id="desktop-priority" class="px-3 py-2.5 rounded-xl border border-sand-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-ink/20 text-ink appearance-none pr-7" style="background-image:url('data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2212%22 height=%228%22 fill=%22none%22%3E%3Cpath d=%22M1 1l5 5 5-5%22 stroke=%22%236b6460%22 stroke-width=%221.5%22 stroke-linecap=%22round%22/%3E%3C/svg%3E');background-repeat:no-repeat;background-position:right 10px center;">
+      <option value="medium">Sedang</option>
+      <option value="high">Tinggi</option>
+      <option value="low">Rendah</option>
+    </select>
+    <button onclick="addTask('desktop')" class="px-5 py-2.5 rounded-xl bg-ink text-sand-50 text-sm font-medium hover:bg-ink-light transition-colors whitespace-nowrap">+ Tambah</button>
+  </form>
+  <div class="flex items-center gap-2">
+    <div class="w-8 h-8 rounded-full bg-sage text-white flex items-center justify-center text-sm font-medium">A</div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════ MAIN LAYOUT ══════════════════ -->
+<div class="flex h-[calc(100vh-57px)] md:h-[calc(100vh-65px)] overflow-hidden">
+
+  <!-- SIDEBAR (desktop) -->
+  <aside id="sidebar" class="hidden md:flex flex-col w-64 lg:w-72 border-r border-sand-200 bg-sand-50 overflow-y-auto shrink-0 p-5 gap-6">
+    <div id="sidebar-content"></div>
+  </aside>
+
+  <!-- MAIN CONTENT -->
+  <main class="flex-1 overflow-hidden flex flex-col">
+
+    <!-- ── MOBILE TABS ─────────────────────────────── -->
+    <div class="md:hidden flex gap-1 px-4 pt-3 pb-2">
+      <button class="tab-btn active flex-1 py-2 rounded-xl text-sm font-medium text-center" data-col="pending" onclick="switchTab('pending')">Pending</button>
+      <button class="tab-btn flex-1 py-2 rounded-xl text-sm font-medium text-center bg-sand-100 text-ink" data-col="today" onclick="switchTab('today')">Hari Ini</button>
+      <button class="tab-btn flex-1 py-2 rounded-xl text-sm font-medium text-center bg-sand-100 text-ink" data-col="done" onclick="switchTab('done')">Selesai</button>
+    </div>
+
+    <!-- ── KANBAN BOARD ────────────────────────────── -->
+    <div id="kanban-board" class="flex-1 overflow-x-auto overflow-y-hidden">
+      <div class="flex h-full gap-4 p-4 md:p-6 w-full md:w-auto min-w-0">
+
+        <!-- COL: PENDING -->
+        <div id="col-pending" class="kanban-col-wrapper mobile-col w-full md:w-80 lg:w-96 shrink-0 hidden md:flex flex-col" data-col="pending">
+          <div class="kanban-col flex-1 rounded-xl2 border border-sand-200 bg-white/70 flex flex-col overflow-hidden" data-col="pending">
+            <div class="flex items-center justify-between px-4 py-3 border-b border-sand-100">
+              <div class="flex items-center gap-2">
+                <span class="w-2.5 h-2.5 rounded-full bg-sand-300 inline-block"></span>
+                <h3 class="font-display text-base tracking-tight">Pending</h3>
+              </div>
+              <span id="count-pending" class="text-xs font-medium bg-sand-100 text-ink-muted px-2 py-0.5 rounded-full">0</span>
+            </div>
+            <div class="drop-zone flex-1 p-3 overflow-y-auto flex flex-col gap-2.5" id="drop-pending"
+              ondragover="onDragOver(event)" ondrop="onDrop(event, 'pending')" ondragleave="onDragLeave(event)"></div>
+          </div>
+        </div>
+
+        <!-- COL: TODAY -->
+        <div id="col-today" class="kanban-col-wrapper mobile-col w-full md:w-80 lg:w-96 shrink-0 hidden md:flex flex-col" data-col="today">
+          <div class="kanban-col flex-1 rounded-xl2 border border-sage/30 bg-sage-light/30 flex flex-col overflow-hidden" data-col="today">
+            <div class="flex items-center justify-between px-4 py-3 border-b border-sage/20">
+              <div class="flex items-center gap-2">
+                <span class="w-2.5 h-2.5 rounded-full bg-sage inline-block"></span>
+                <h3 class="font-display text-base tracking-tight">Hari Ini</h3>
+              </div>
+              <span id="count-today" class="text-xs font-medium bg-sage/15 text-sage px-2 py-0.5 rounded-full">0</span>
+            </div>
+            <div class="drop-zone flex-1 p-3 overflow-y-auto flex flex-col gap-2.5" id="drop-today"
+              ondragover="onDragOver(event)" ondrop="onDrop(event, 'today')" ondragleave="onDragLeave(event)"></div>
+          </div>
+        </div>
+
+        <!-- COL: DONE -->
+        <div id="col-done" class="kanban-col-wrapper mobile-col w-full md:w-80 lg:w-96 shrink-0 hidden md:flex flex-col" data-col="done">
+          <div class="kanban-col flex-1 rounded-xl2 border border-sand-200 bg-sand-100/40 flex flex-col overflow-hidden" data-col="done">
+            <div class="flex items-center justify-between px-4 py-3 border-b border-sand-200">
+              <div class="flex items-center gap-2">
+                <span class="w-2.5 h-2.5 rounded-full bg-ink-muted inline-block"></span>
+                <h3 class="font-display text-base tracking-tight">Selesai</h3>
+              </div>
+              <span id="count-done" class="text-xs font-medium bg-sand-200 text-ink-muted px-2 py-0.5 rounded-full">0</span>
+            </div>
+            <div class="drop-zone flex-1 p-3 overflow-y-auto flex flex-col gap-2.5" id="drop-done"
+              ondragover="onDragOver(event)" ondrop="onDrop(event, 'done')" ondragleave="onDragLeave(event)"></div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- ═══════════════════════════════════════ FAB (Mobile) ═════════════════ -->
+<button id="fab" onclick="openModal()" class="md:hidden fixed bottom-6 right-6 z-30 w-14 h-14 rounded-full bg-ink text-sand-50 shadow-fab flex items-center justify-center text-2xl leading-none select-none" aria-label="Tambah Tugas">
+  <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="11" y1="4" x2="11" y2="18"/><line x1="4" y1="11" x2="18" y2="11"/></svg>
+</button>
+
+<!-- ═══════════════════════════════════════ MODAL (Mobile) ══════════════ -->
+<div id="modal-backdrop" class="fixed inset-0 z-50 flex items-end justify-center bg-ink/40 hidden" onclick="handleBackdropClick(event)">
+  <div id="modal-box" class="bg-sand-50 w-full max-w-lg rounded-t-2xl p-6 pb-8 shadow-2xl" onclick="event.stopPropagation()">
+    <div class="flex items-center justify-between mb-5">
+      <h2 class="font-display text-xl">Tugas Baru</h2>
+      <button onclick="closeModal()" class="p-1.5 rounded-lg hover:bg-sand-100 transition-colors">
+        <svg width="18" height="18" fill="none" stroke="#1a1714" stroke-width="2" stroke-linecap="round"><line x1="4" y1="4" x2="14" y2="14"/><line x1="14" y1="4" x2="4" y2="14"/></svg>
+      </button>
+    </div>
+    <div class="flex flex-col gap-3">
+      <input id="modal-task-input" type="text" placeholder="Nama tugas… (coba 'urgent', 'bug', 'meeting')"
+        class="w-full px-4 py-3 rounded-xl border border-sand-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-ink/20 focus:border-ink/40 placeholder-sand-400" />
+      <div id="modal-tags" class="flex flex-wrap gap-1.5 min-h-0"></div>
+      <div class="grid grid-cols-2 gap-2">
+        <select id="modal-category" class="px-3 py-2.5 rounded-xl border border-sand-200 bg-white text-sm focus:outline-none text-ink">
+          <option value="Kerja">Kerja</option>
+          <option value="Pribadi">Pribadi</option>
+          <option value="Belajar">Belajar</option>
+          <option value="Kesehatan">Kesehatan</option>
+        </select>
+        <select id="modal-priority" class="px-3 py-2.5 rounded-xl border border-sand-200 bg-white text-sm focus:outline-none text-ink">
+          <option value="medium">Prioritas Sedang</option>
+          <option value="high">Prioritas Tinggi</option>
+          <option value="low">Prioritas Rendah</option>
+        </select>
+      </div>
+      <select id="modal-column" class="px-3 py-2.5 rounded-xl border border-sand-200 bg-white text-sm focus:outline-none text-ink">
+        <option value="pending">→ Pending</option>
+        <option value="today">→ Hari Ini</option>
+        <option value="done">→ Selesai</option>
+      </select>
+      <button onclick="addTask('modal')" class="w-full py-3 rounded-xl bg-ink text-sand-50 text-sm font-medium hover:bg-ink-light transition-colors mt-1">Tambah Tugas</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════ JAVASCRIPT ═══════════════════ -->
+<script>
+// ─── DATA ────────────────────────────────────────────────────────────────────
+
+let tasks = [
+  { id: 't1', title: 'Review proposal klien Q3', category: 'Kerja', priority: 'high', column: 'pending', tags: ['High Priority'] },
+  { id: 't2', title: 'Buat jadwal sprint mingguan', category: 'Kerja', priority: 'medium', column: 'pending', tags: [] },
+  { id: 't3', title: 'Baca buku "Deep Work" — Bab 4', category: 'Belajar', priority: 'low', column: 'pending', tags: [] },
+  { id: 't4', title: 'Fix bug login page (urgent!)', category: 'Kerja', priority: 'high', column: 'today', tags: ['High Priority', 'Bug'] },
+  { id: 't5', title: 'Meeting 1-on-1 dengan tim', category: 'Kerja', priority: 'medium', column: 'today', tags: ['Meeting'] },
+  { id: 't6', title: 'Olahraga pagi 30 menit', category: 'Kesehatan', priority: 'medium', column: 'today', tags: [] },
+  { id: 't7', title: 'Deploy update staging server', category: 'Kerja', priority: 'high', column: 'done', tags: ['High Priority'] },
+  { id: 't8', title: 'Bayar tagihan internet', category: 'Pribadi', priority: 'low', column: 'done', tags: [] },
+];
+
+let nextId = 100;
+let draggedId = null;
+
+// Filters
+let activeCategories = new Set();
+let activePriorities = new Set();
+
+// ─── AUTO-TAG RULES ──────────────────────────────────────────────────────────
+
+const tagRules = [
+  { keywords: ['urgent', 'segera', 'asap', 'darurat', 'critical', 'kritis'],  badge: 'High Priority', priorityOverride: 'high' },
+  { keywords: ['bug', 'error', 'fix', 'broken', 'crash', 'issue'],             badge: 'Bug',           priorityOverride: 'high' },
+  { keywords: ['meeting', 'rapat', 'diskusi', 'standup', 'sinkronisasi'],       badge: 'Meeting',       priorityOverride: null  },
+  { keywords: ['belajar', 'study', 'kursus', 'course', 'latihan', 'practice'], badge: 'Belajar',       priorityOverride: null  },
+  { keywords: ['deploy', 'release', 'launch', 'production', 'prod'],           badge: 'Deploy',        priorityOverride: 'high' },
+  { keywords: ['design', 'ui', 'ux', 'figma', 'mockup', 'wireframe'],         badge: 'Design',        priorityOverride: null  },
+];
+
+function computeAutoTags(text) {
+  const lower = text.toLowerCase();
+  const matched = [];
+  let priorityOverride = null;
+  for (const rule of tagRules) {
+    if (rule.keywords.some(kw => lower.includes(kw))) {
+      if (!matched.find(m => m.badge === rule.badge)) {
+        matched.push(rule);
+        if (rule.priorityOverride && !priorityOverride) priorityOverride = rule.priorityOverride;
+      }
+    }
+  }
+  return { tags: matched.map(r => r.badge), priorityOverride };
+}
+
+// ─── TAG BADGE COLORS ────────────────────────────────────────────────────────
+
+const tagColors = {
+  'High Priority': 'bg-rose-light text-rose border border-rose/20',
+  'Bug':           'bg-rose-light text-rose border border-rose/20',
+  'Meeting':       'bg-sky-light text-sky border border-sky/20',
+  'Belajar':       'bg-amber-light text-amber border border-amber/20',
+  'Deploy':        'bg-sage-light text-sage border border-sage/20',
+  'Design':        'bg-sand-100 text-ink-muted border border-sand-200',
+};
+
+function tagBadgeClass(tag) {
+  return tagColors[tag] || 'bg-sand-100 text-ink-muted border border-sand-200';
+}
+
+// ─── AUTO-TAG LISTENER ────────────────────────────────────────────────────────
+
+function bindAutoTag(inputId, tagsId, priorityId) {
+  const input = document.getElementById(inputId);
+  const tagsEl = document.getElementById(tagsId);
+  const priorityEl = document.getElementById(priorityId);
+  if (!input) return;
+  input.addEventListener('input', () => {
+    const { tags, priorityOverride } = computeAutoTags(input.value);
+    tagsEl.innerHTML = tags.map(t =>
+      `<span class="tag-badge text-xs px-2.5 py-0.5 rounded-full font-medium ${tagBadgeClass(t)}">${t}</span>`
+    ).join('');
+    if (priorityOverride && priorityEl) priorityEl.value = priorityOverride;
+  });
+}
+
+// ─── ADD TASK ────────────────────────────────────────────────────────────────
+
+function addTask(source) {
+  let title, category, priority, column, tagsEl;
+  if (source === 'desktop') {
+    title    = document.getElementById('desktop-task-input').value.trim();
+    category = document.getElementById('desktop-category').value;
+    priority = document.getElementById('desktop-priority').value;
+    column   = 'pending';
+    tagsEl   = document.getElementById('desktop-tags');
+  } else {
+    title    = document.getElementById('modal-task-input').value.trim();
+    category = document.getElementById('modal-category').value;
+    priority = document.getElementById('modal-priority').value;
+    column   = document.getElementById('modal-column').value;
+    tagsEl   = document.getElementById('modal-tags');
+  }
+
+  if (!title) return;
+
+  const { tags } = computeAutoTags(title);
+
+  const task = { id: 't' + (nextId++), title, category, priority, column, tags };
+  tasks.push(task);
+  renderBoard();
+  renderSidebarContent();
+
+  // Reset
+  if (source === 'desktop') {
+    document.getElementById('desktop-task-input').value = '';
+    tagsEl.innerHTML = '';
+  } else {
+    document.getElementById('modal-task-input').value = '';
+    tagsEl.innerHTML = '';
+    closeModal();
+  }
+}
+
+// ─── PRIORITY LABELS ─────────────────────────────────────────────────────────
+
+const priorityLabel = { high: 'Tinggi', medium: 'Sedang', low: 'Rendah' };
+const priorityDot   = { high: 'bg-rose', medium: 'bg-amber', low: 'bg-sage' };
+const priorityClass = { high: 'priority-high', medium: 'priority-medium', low: 'priority-low' };
+const catColors     = { 'Kerja':'bg-sky-light text-sky', 'Pribadi':'bg-sand-200 text-ink-muted', 'Belajar':'bg-amber-light text-amber', 'Kesehatan':'bg-sage-light text-sage' };
+
+// ─── RENDER TASK CARD ────────────────────────────────────────────────────────
+
+function quickMoveBtns(task) {
+  const cols = ['pending','today','done'];
+  const labels = { pending:'Pending', today:'Hari Ini', done:'Selesai' };
+  return cols.filter(c => c !== task.column).map(c =>
+    `<button class="qm-btn" onclick="moveTask('${task.id}','${c}')">→ ${labels[c]}</button>`
+  ).join('');
+}
+
+function renderCard(task) {
+  const card = document.createElement('div');
+  card.className = `task-card bg-white rounded-xl shadow-card ${priorityClass[task.priority]} p-3.5 select-none`;
+  card.setAttribute('draggable', 'true');
+  card.setAttribute('data-id', task.id);
+  card.addEventListener('dragstart', onDragStart);
+  card.addEventListener('dragend', onDragEnd);
+
+  const catCls = catColors[task.category] || 'bg-sand-100 text-ink-muted';
+  const tagBadges = task.tags.map(t =>
+    `<span class="text-xs px-2 py-0.5 rounded-full font-medium ${tagBadgeClass(t)}">${t}</span>`
+  ).join('');
+
+  card.innerHTML = `
+    <div class="flex items-start justify-between gap-2 mb-2">
+      <p class="text-sm font-medium leading-snug flex-1 ${task.column==='done'?'line-through text-ink-muted':''}">${escHtml(task.title)}</p>
+      <button onclick="deleteTask('${task.id}')" class="shrink-0 w-5 h-5 flex items-center justify-center text-sand-300 hover:text-rose transition-colors mt-0.5" title="Hapus">
+        <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="2" y1="2" x2="11" y2="11"/><line x1="11" y1="2" x2="2" y2="11"/></svg>
+      </button>
+    </div>
+    <div class="flex flex-wrap items-center gap-1.5 mb-2.5">
+      <span class="text-xs px-2 py-0.5 rounded-full ${catCls}">${task.category}</span>
+      <span class="flex items-center gap-1 text-xs text-ink-muted">
+        <span class="w-1.5 h-1.5 rounded-full ${priorityDot[task.priority]} inline-block"></span>${priorityLabel[task.priority]}
+      </span>
+      ${tagBadges}
+    </div>
+    <div class="flex flex-wrap gap-1 md:hidden">
+      ${quickMoveBtns(task)}
+    </div>
+  `;
+  return card;
+}
+
+function escHtml(str) {
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ─── RENDER BOARD ─────────────────────────────────────────────────────────────
+
+function getFilteredTasks() {
+  return tasks.filter(t => {
+    const catOk = activeCategories.size === 0 || activeCategories.has(t.category);
+    const priOk = activePriorities.size === 0 || activePriorities.has(t.priority);
+    return catOk && priOk;
+  });
+}
+
+function renderBoard() {
+  const cols = ['pending','today','done'];
+  const filtered = getFilteredTasks();
+  cols.forEach(col => {
+    const zone = document.getElementById('drop-' + col);
+    zone.innerHTML = '';
+    const colTasks = filtered.filter(t => t.column === col);
+    colTasks.forEach(t => zone.appendChild(renderCard(t)));
+    document.getElementById('count-' + col).textContent = colTasks.length;
+  });
+}
+
+// ─── MOVE / DELETE ───────────────────────────────────────────────────────────
+
+function moveTask(id, toCol) {
+  const t = tasks.find(t => t.id === id);
+  if (t) { t.column = toCol; renderBoard(); }
+}
+
+function deleteTask(id) {
+  tasks = tasks.filter(t => t.id !== id);
+  renderBoard();
+  renderSidebarContent();
+}
+
+// ─── DRAG & DROP ─────────────────────────────────────────────────────────────
+/**
+ * LOGIKA DRAG & DROP (HTML5 Drag and Drop API):
+ *
+ * 1. onDragStart — Saat kartu mulai di-drag, simpan ID task ke `draggedId`
+ *    dan tambahkan class `.dragging` untuk efek visual (opacity + scale turun).
+ *    Data transfer juga disimpan via `event.dataTransfer.setData()`.
+ *
+ * 2. onDragOver — Saat elemen di-drag melewati zona drop (.drop-zone),
+ *    `event.preventDefault()` dipanggil untuk mengizinkan drop terjadi
+ *    (default browser menolak drop). Class `drag-over` ditambah ke kolom
+ *    untuk highlight visual.
+ *
+ * 3. onDrop — Saat kartu dilepas di kolom target, ambil ID dari `draggedId`,
+ *    update properti `.column` pada data task, lalu panggil `renderBoard()`
+ *    untuk re-render seluruh board tanpa page refresh.
+ *
+ * 4. onDragLeave — Hapus highlight `drag-over` saat elemen keluar dari zona.
+ *
+ * 5. onDragEnd — Bersihkan class `.dragging` dari kartu setelah drop selesai
+ *    atau dibatalkan.
+ *
+ * Hasilnya: state task diperbarui di memori (array `tasks`), kemudian
+ * board di-render ulang secara reaktif — tidak ada page reload sama sekali.
+ */
+
+function onDragStart(e) {
+  draggedId = e.currentTarget.dataset.id;
+  e.dataTransfer.effectAllowed = 'move';
+  e.dataTransfer.setData('text/plain', draggedId);
+  setTimeout(() => e.currentTarget.classList.add('dragging'), 0);
+}
+
+function onDragEnd(e) {
+  e.currentTarget.classList.remove('dragging');
+  document.querySelectorAll('.kanban-col').forEach(c => c.classList.remove('drag-over'));
+}
+
+function onDragOver(e) {
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+  const col = e.currentTarget.closest('.kanban-col');
+  if (col) col.classList.add('drag-over');
+}
+
+function onDragLeave(e) {
+  const col = e.currentTarget.closest('.kanban-col');
+  if (col && !col.contains(e.relatedTarget)) col.classList.remove('drag-over');
+}
+
+function onDrop(e, targetCol) {
+  e.preventDefault();
+  const col = e.currentTarget.closest('.kanban-col');
+  if (col) col.classList.remove('drag-over');
+  if (!draggedId) return;
+  const task = tasks.find(t => t.id === draggedId);
+  if (task && task.column !== targetCol) {
+    task.column = targetCol;
+    renderBoard();
+  }
+  draggedId = null;
+}
+
+// ─── MINI CALENDAR ───────────────────────────────────────────────────────────
+
+function buildCalendar() {
+  const now = new Date();
+  const year = now.getFullYear(), month = now.getMonth(), today = now.getDate();
+  const monthNames = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+  const dayNames = ['M','S','S','R','K','J','S'];
+  const firstDay = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const offset = (firstDay === 0 ? 6 : firstDay - 1);
+
+  // days with tasks
+  const taskDays = new Set(tasks.filter(t => t.column !== 'done').map(() => Math.floor(Math.random() * daysInMonth) + 1));
+  taskDays.add(today);
+
+  let html = `
+    <div class="mb-3">
+      <p class="font-display text-base tracking-tight">${monthNames[month]} ${year}</p>
+    </div>
+    <div class="grid grid-cols-7 gap-0.5 mb-1">
+      ${dayNames.map(d=>`<div class="text-center text-xs text-ink-muted py-0.5">${d}</div>`).join('')}
+    </div>
+    <div class="grid grid-cols-7 gap-0.5">
+  `;
+
+  for (let i = 0; i < offset; i++) html += '<div></div>';
+  for (let d = 1; d <= daysInMonth; d++) {
+    const isToday = d === today;
+    const hasTask = taskDays.has(d) && !isToday;
+    html += `<div class="cal-day ${isToday?'today':''} ${hasTask?'has-task':''} text-center text-xs py-1 w-7 h-7 leading-5 mx-auto rounded-full cursor-default ${isToday?'':'hover:bg-sand-100 transition-colors'}">${d}</div>`;
+  }
+  html += '</div>';
+  return html;
+}
+
+// ─── SIDEBAR CONTENT ─────────────────────────────────────────────────────────
+
+function buildFilterHTML() {
+  const categories = [...new Set(tasks.map(t=>t.category))];
+  const priorities = [
+    { val:'high', label:'Tinggi' },
+    { val:'medium', label:'Sedang' },
+    { val:'low', label:'Rendah' },
+  ];
+
+  return `
+    <div class="mb-5">
+      <p class="text-xs font-semibold uppercase tracking-widest text-ink-muted mb-3">Kategori</p>
+      <div class="flex flex-col gap-2">
+        ${categories.map(c => `
+          <label class="flex items-center gap-2.5 cursor-pointer group">
+            <input type="checkbox" class="custom-check w-3.5 h-3.5 rounded" value="${c}" onchange="toggleFilter('category','${c}',this.checked)" ${activeCategories.has(c)?'checked':''}>
+            <span class="text-sm group-hover:text-ink transition-colors">${c}</span>
+            <span class="ml-auto text-xs text-ink-muted">${tasks.filter(t=>t.category===c).length}</span>
+          </label>`).join('')}
+      </div>
+    </div>
+    <div>
+      <p class="text-xs font-semibold uppercase tracking-widest text-ink-muted mb-3">Prioritas</p>
+      <div class="flex flex-col gap-2">
+        ${priorities.map(p => `
+          <label class="flex items-center gap-2.5 cursor-pointer group">
+            <input type="checkbox" class="custom-check w-3.5 h-3.5 rounded" value="${p.val}" onchange="toggleFilter('priority','${p.val}',this.checked)" ${activePriorities.has(p.val)?'checked':''}>
+            <span class="flex items-center gap-1.5 text-sm group-hover:text-ink transition-colors">
+              <span class="w-2 h-2 rounded-full ${priorityDot[p.val]} inline-block"></span>${p.label}
+            </span>
+            <span class="ml-auto text-xs text-ink-muted">${tasks.filter(t=>t.priority===p.val).length}</span>
+          </label>`).join('')}
+      </div>
+    </div>
+  `;
+}
+
+function renderSidebarContent() {
+  const calHTML = buildCalendar();
+  const filterHTML = buildFilterHTML();
+  const full = `
+    <div class="mb-6">
+      <div class="bg-white rounded-xl border border-sand-200 p-4 shadow-card">
+        ${calHTML}
+      </div>
+    </div>
+    <hr class="border-sand-200 mb-6">
+    <div>${filterHTML}</div>
+    <hr class="border-sand-200 my-6">
+    <div>
+      <p class="text-xs font-semibold uppercase tracking-widest text-ink-muted mb-3">Ringkasan</p>
+      <div class="flex flex-col gap-2">
+        ${['pending','today','done'].map((c,i) => {
+          const labels = ['Pending','Hari Ini','Selesai'];
+          const cnt = tasks.filter(t=>t.column===c).length;
+          return `<div class="flex items-center justify-between text-sm">
+            <span class="text-ink-muted">${labels[i]}</span>
+            <span class="font-medium">${cnt}</span>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>
+  `;
+  document.getElementById('sidebar-content').innerHTML = full;
+  document.getElementById('offcanvas-content').innerHTML = full;
+}
+
+function toggleFilter(type, value, checked) {
+  if (type === 'category') checked ? activeCategories.add(value) : activeCategories.delete(value);
+  else                     checked ? activePriorities.add(value) : activePriorities.delete(value);
+  renderBoard();
+  renderSidebarContent();
+}
+
+// ─── MOBILE TAB ──────────────────────────────────────────────────────────────
+
+let activeTab = 'pending';
+
+function switchTab(col) {
+  activeTab = col;
+  document.querySelectorAll('.tab-btn').forEach(b => {
+    const isActive = b.dataset.col === col;
+    b.classList.toggle('active', isActive);
+    b.classList.toggle('bg-sand-100', !isActive);
+    b.classList.toggle('text-ink', !isActive);
+  });
+  document.querySelectorAll('.mobile-col').forEach(c => {
+    c.classList.toggle('hidden', c.dataset.col !== col);
+    c.classList.toggle('flex', c.dataset.col === col);
+  });
+}
+
+function applyMobileLayout() {
+  const isMobile = window.innerWidth < 768;
+  if (isMobile) {
+    document.querySelectorAll('.mobile-col').forEach(c => {
+      const show = c.dataset.col === activeTab;
+      c.classList.toggle('hidden', !show);
+      c.classList.toggle('flex', show);
+    });
+  } else {
+    document.querySelectorAll('.mobile-col').forEach(c => {
+      c.classList.remove('hidden');
+      c.classList.add('flex');
+    });
+  }
+}
+
+window.addEventListener('resize', applyMobileLayout);
+
+// ─── OFF-CANVAS ──────────────────────────────────────────────────────────────
+
+function openOffCanvas() {
+  document.getElementById('offcanvas').classList.remove('-translate-x-full');
+  const bd = document.getElementById('offcanvas-backdrop');
+  bd.classList.remove('hidden');
+  requestAnimationFrame(() => bd.classList.remove('opacity-0'));
+}
+
+function closeOffCanvas() {
+  document.getElementById('offcanvas').classList.add('-translate-x-full');
+  const bd = document.getElementById('offcanvas-backdrop');
+  bd.classList.add('opacity-0');
+  setTimeout(() => bd.classList.add('hidden'), 320);
+}
+
+document.getElementById('hamburger-btn').addEventListener('click', openOffCanvas);
+
+// ─── MODAL ───────────────────────────────────────────────────────────────────
+
+function openModal() {
+  const bd = document.getElementById('modal-backdrop');
+  bd.classList.remove('hidden');
+  requestAnimationFrame(() => {
+    bd.style.opacity = '1';
+    document.getElementById('modal-box').style.transform = 'translateY(0) scale(1)';
+    document.getElementById('modal-box').style.opacity = '1';
+  });
+  setTimeout(() => document.getElementById('modal-task-input').focus(), 100);
+}
+
+function closeModal() {
+  const bd = document.getElementById('modal-backdrop');
+  document.getElementById('modal-box').style.transform = 'translateY(40px) scale(.97)';
+  document.getElementById('modal-box').style.opacity = '0';
+  bd.style.opacity = '0';
+  setTimeout(() => {
+    bd.classList.add('hidden');
+    document.getElementById('modal-task-input').value = '';
+    document.getElementById('modal-tags').innerHTML = '';
+  }, 250);
+}
+
+function handleBackdropClick(e) {
+  if (e.target === document.getElementById('modal-backdrop')) closeModal();
+}
+
+// Close modal on Escape
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+// ─── INIT ────────────────────────────────────────────────────────────────────
+
+bindAutoTag('desktop-task-input', 'desktop-tags', 'desktop-priority');
+bindAutoTag('modal-task-input', 'modal-tags', 'modal-priority');
+
+renderSidebarContent();
+renderBoard();
+applyMobileLayout();
+switchTab('pending');
+</script>
+</body>
+</html>
