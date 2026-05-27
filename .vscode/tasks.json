@@ -1,0 +1,84 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Flowdesk: Start All",
+      "dependsOrder": "parallel",
+      "dependsOn": [
+        "Flowdesk: Laravel Serve",
+        "Flowdesk: Vite Dev",
+        "Flowdesk: Queue Worker",
+        "Flowdesk: Reverb Start"
+      ],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Flowdesk: Laravel Serve",
+      "type": "shell",
+      "command": "php artisan serve",
+      "options": {
+        "cwd": "${workspaceFolder}/flowdesk"
+      },
+      "isBackground": true,
+      "problemMatcher": [],
+      "presentation": {
+        "panel": "dedicated",
+        "group": "flowdesk",
+        "reveal": "always",
+        "clear": false
+      }
+    },
+    {
+      "label": "Flowdesk: Vite Dev",
+      "type": "shell",
+      "command": "npm run dev",
+      "options": {
+        "cwd": "${workspaceFolder}/flowdesk"
+      },
+      "isBackground": true,
+      "problemMatcher": [],
+      "presentation": {
+        "panel": "dedicated",
+        "group": "flowdesk",
+        "reveal": "always",
+        "clear": false
+      }
+    },
+    {
+      "label": "Flowdesk: Queue Worker",
+      "type": "shell",
+      "command": "php artisan queue:work",
+      "options": {
+        "cwd": "${workspaceFolder}/flowdesk"
+      },
+      "isBackground": true,
+      "problemMatcher": [],
+      "presentation": {
+        "panel": "dedicated",
+        "group": "flowdesk",
+        "reveal": "always",
+        "clear": false
+      }
+    },
+    {
+      "label": "Flowdesk: Reverb Start",
+      "type": "shell",
+      "command": "php artisan reverb:start",
+      "options": {
+        "cwd": "${workspaceFolder}/flowdesk"
+      },
+      "isBackground": true,
+      "problemMatcher": [],
+      "presentation": {
+        "panel": "dedicated",
+        "group": "flowdesk",
+        "reveal": "always",
+        "clear": false
+      }
+    }
+  ]
+}

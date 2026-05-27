@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="id">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#1a1714" />
+    <title>Flowdesk Offline</title>
+    <style>
+      :root {
+        color-scheme: light;
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        background: #faf8f4;
+        color: #1a1714;
+      }
+
+      body {
+        min-height: 100vh;
+        margin: 0;
+        display: grid;
+        place-items: center;
+        padding: 24px;
+      }
+
+      main {
+        width: min(420px, 100%);
+        border: 1px solid #e7dfd3;
+        border-radius: 18px;
+        background: #fff;
+        box-shadow: 0 18px 50px rgb(26 23 20 / 10%);
+        padding: 28px;
+      }
+
+      .mark {
+        width: 46px;
+        height: 46px;
+        display: grid;
+        place-items: center;
+        border-radius: 14px;
+        background: #1a1714;
+        color: #faf8f4;
+        font-weight: 800;
+        margin-bottom: 18px;
+      }
+
+      h1 {
+        margin: 0 0 8px;
+        font-size: 24px;
+        line-height: 1.15;
+      }
+
+      p {
+        margin: 0;
+        color: #6f665d;
+        font-size: 14px;
+        line-height: 1.6;
+      }
+
+      button {
+        margin-top: 20px;
+        width: 100%;
+        border: 0;
+        border-radius: 12px;
+        background: #1a1714;
+        color: #faf8f4;
+        font-weight: 700;
+        padding: 12px 16px;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div class="mark">F</div>
+      <h1>Koneksi terputus</h1>
+      <p>Flowdesk sudah siap sebagai aplikasi, tetapi workspace kolaborasi dan sinkronisasi data tetap membutuhkan koneksi internet.</p>
+      <button type="button" onclick="window.location.reload()">Coba lagi</button>
+    </main>
+  </body>
+</html>

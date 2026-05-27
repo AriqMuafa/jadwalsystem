@@ -16,7 +16,7 @@ const columnTasks = (col) => computed(() => store.filteredByColumn(col));
 </script>
 
 <template>
-  <div id="kanban-board" class="flex-1 overflow-x-auto overflow-y-hidden">
+  <div id="kanban-board" class="flex-1 overflow-x-auto overflow-y-hidden relative">
     <div class="flex h-full gap-4 p-4 md:p-6 w-full md:w-auto min-w-0">
       <div
         v-for="col in columns"

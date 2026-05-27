@@ -9,11 +9,25 @@ return new class extends Migration {
     {
         Schema::create('tasks', function (Blueprint $table) {
             $table->id();
+            
+            // Relasi ke tabel users (Otomatis hapus tugas jika user dihapus)
+            $table->foreignId('user_id')->nullable()->constrained()->cascadeOnDelete();
+            
+            // Data Utama Tugas
             $table->string('title');
             $table->string('category');
             $table->string('priority');
             $table->string('column_status');
             $table->json('tags')->nullable();
+            
+            // Time Tracking & Tenggat Waktu
+            $table->integer('time_spent')->default(0);
+            $table->timestamp('due_date')->nullable();
+            
+            // File Uploads
+            $table->string('attachment_path')->nullable();
+            $table->string('file_name')->nullable();
+            
             $table->timestamps();
         });
     }

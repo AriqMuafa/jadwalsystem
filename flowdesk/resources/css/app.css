@@ -22,9 +22,7 @@ h1, h2, h3, .font-display { font-family: 'DM Serif Display', serif; }
 .drop-zone { min-height: 80px; }
 
 /* Calendar */
-.cal-day.today { background: #1a1714; color: #faf8f4; border-radius: 50%; }
-.cal-day.has-task { position: relative; }
-.cal-day.has-task::after { content:''; position: absolute; bottom: 1px; left: 50%; transform: translateX(-50%); width: 4px; height: 4px; border-radius: 50%; background: #5a7a6a; }
+.cal-day.today { background: #1a1714; color: #faf8f4; }
 
 /* Tag badge animate */
 @keyframes tagPop { from { transform: scale(.7); opacity: 0; } to { transform: scale(1); opacity: 1; } }
