@@ -23,6 +23,18 @@ const normalizeTasks = (tasks) => tasks.map((task) => ({
   tags: Array.isArray(task.tags) ? task.tags : [],
 }));
 
+const normalizeWorkspace = (workspace) => {
+  if (!workspace) return null;
+
+  return {
+    id: workspace.id,
+    name: workspace.name,
+    owner_id: workspace.owner_id,
+    join_code: workspace.join_code,
+    is_personal: Boolean(workspace.is_personal),
+  };
+};
+
 const readSnapshot = () => {
   if (!snapshotKey.value) return null;
 
@@ -40,7 +52,7 @@ const writeSnapshot = (tasks) => {
 
   try {
     localStorage.setItem(snapshotKey.value, JSON.stringify({
-      workspace: activeWorkspace.value,
+      workspace: normalizeWorkspace(activeWorkspace.value),
       tasks: normalizeTasks(tasks),
       cached_at: new Date().toISOString(),
     }));

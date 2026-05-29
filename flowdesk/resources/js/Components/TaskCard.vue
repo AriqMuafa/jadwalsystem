@@ -15,6 +15,7 @@ const quickMoveLabels = { pending: 'Pending', today: 'Hari Ini', on_progress: 'O
 const quickMoveTargets = (task) => ['pending', 'today', 'on_progress', 'done'].filter((c) => c !== task.column_status);
 const didDrag = ref(false);
 const suppressNextClick = ref(false);
+const attachmentPreviewOpen = ref(false);
 let longPressTimer = null;
 
 // --- Time Tracking Logic ---
@@ -51,6 +52,31 @@ const formattedTime = computed(() => {
   return localTime.value >= 3600 ? `${h}:${m}:${s}` : `${m}:${s}`;
 });
 
+const attachmentUrl = computed(() => {
+  if (!props.task.attachment_path || String(props.task.id).startsWith('draft-') || String(props.task.id).startsWith('tmp-')) {
+    return null;
+  }
+
+  return `/tasks/${props.task.id}/attachment`;
+});
+
+const fileExtension = computed(() => {
+  const name = props.task.file_name || props.task.attachment_path || '';
+  return name.split('.').pop()?.toLowerCase() || '';
+});
+
+const isImageAttachment = computed(() => ['jpg', 'jpeg', 'png', 'webp'].includes(fileExtension.value));
+const isPdfAttachment = computed(() => fileExtension.value === 'pdf');
+
+const openAttachmentPreview = () => {
+  if (!attachmentUrl.value) return;
+  attachmentPreviewOpen.value = true;
+};
+
+const closeAttachmentPreview = () => {
+  attachmentPreviewOpen.value = false;
+};
+
 // --- Due Date Logic & Formatter ---
 const isSameLocalDay = (a, b) => (
   a.getFullYear() === b.getFullYear()
@@ -84,7 +110,7 @@ const formatDueDate = (dateString) => {
     hour12: false,
   }).format(date);
 
-  return `${datePart}, ${timePart}`;
+  return `${datePart} ${timePart}`;
 };
 
 const startOfLocalDay = (date) => new Date(date.getFullYear(), date.getMonth(), date.getDate());
@@ -241,7 +267,7 @@ const handleDragEnd = () => {
     </div>
 
     <div class="flex items-center justify-between mt-2 pt-2 border-t border-sand-100">
-      <div class="flex items-center gap-1.5">
+      <div class="flex min-w-0 items-center gap-1.5">
         <button 
           v-if="task.column_status !== 'done'"
           @click.stop="toggleTimer" 
@@ -256,18 +282,19 @@ const handleDragEnd = () => {
         <span class="text-xs font-mono font-medium ml-1" :class="isPlaying ? 'text-rose' : 'text-ink-muted'">
           {{ formattedTime }}
         </span>
-      </div>
-
-      <div v-if="task.due_date" class="text-[10px] font-medium px-2 py-0.5 rounded"
-           :class="{
-             'bg-rose/10 text-rose': dateStatus === 'overdue',
-             'bg-sage/15 text-sage': dateStatus === 'today',
-             'bg-amber/15 text-amber': dateStatus === 'warning',
-             'bg-sand-100 text-ink-muted': dateStatus === 'safe'
-           }"
-           :title="formatDueDate(task.due_date)">
-        <span v-if="dateStatus === 'overdue'">Terlambat</span>
-        <span v-else>{{ formatDueRelative(task.due_date) }}</span>
+        <span
+          v-if="task.due_date"
+          class="truncate rounded px-2 py-0.5 text-[10px] font-bold"
+          :class="{
+            'bg-rose/10 text-rose': dateStatus === 'overdue',
+            'bg-sage/15 text-sage': dateStatus === 'today',
+            'bg-amber/15 text-amber': dateStatus === 'warning',
+            'bg-sand-100 text-ink-muted': dateStatus === 'safe'
+          }"
+          :title="formatDueDate(task.due_date)"
+        >
+          {{ formatDueRelative(task.due_date) }}
+        </span>
       </div>
     </div>
 
@@ -275,7 +302,19 @@ const handleDragEnd = () => {
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
         <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
       </svg>
-      <span v-if="task.file_name" class="truncate max-w-[150px] text-ink" title="Buka lampiran">{{ task.file_name }}</span>
+      <button
+        v-if="attachmentUrl"
+        type="button"
+        class="truncate max-w-[150px] text-left text-sky hover:underline"
+        title="Buka lampiran"
+        @pointerdown.stop
+        @click.stop="openAttachmentPreview"
+      >
+        {{ task.file_name }}
+      </button>
+      <span v-else-if="task.file_name" class="truncate max-w-[150px] text-ink" title="Lampiran belum tersedia untuk dibuka">
+        {{ task.file_name }}
+      </span>
       <span v-else class="italic opacity-70">Tidak ada lampiran</span>
     </div>
 
@@ -298,7 +337,7 @@ const handleDragEnd = () => {
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
         <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
       </svg>
-      {{ formatDueRelative(task.due_date) }}
+      <span class="truncate">{{ formatDueDate(task.due_date) }}</span>
     </div>
 
     <div class="flex flex-wrap gap-1 md:hidden mt-2">
@@ -312,5 +351,52 @@ const handleDragEnd = () => {
         → {{ quickMoveLabels[target] }}
       </button>
     </div>
+
+    <Teleport to="body">
+      <div
+        v-if="attachmentPreviewOpen"
+        class="fixed inset-0 z-[140] flex items-end justify-center bg-ink/50 p-0 backdrop-blur-sm md:items-center md:p-4"
+        @click="closeAttachmentPreview"
+      >
+        <div class="flex max-h-[92vh] w-full flex-col overflow-hidden rounded-t-2xl bg-white shadow-2xl md:max-w-3xl md:rounded-2xl" @click.stop>
+          <div class="flex items-center justify-between gap-3 border-b border-sand-200 bg-sand-50 px-4 py-3">
+            <div class="min-w-0">
+              <p class="text-xs font-black uppercase tracking-widest text-ink-muted">Lampiran</p>
+              <p class="truncate text-sm font-bold text-ink">{{ task.file_name }}</p>
+            </div>
+            <button class="rounded-lg p-2 text-ink-muted hover:bg-sand-100 hover:text-rose" title="Tutup" @click="closeAttachmentPreview">
+              <svg width="19" height="19" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+                <line x1="4" y1="4" x2="15" y2="15" />
+                <line x1="15" y1="4" x2="4" y2="15" />
+              </svg>
+            </button>
+          </div>
+
+          <div class="flex min-h-[58vh] flex-1 items-center justify-center overflow-auto bg-sand-50">
+            <img
+              v-if="isImageAttachment"
+              :src="attachmentUrl"
+              :alt="task.file_name"
+              class="max-h-[78vh] w-full object-contain bg-white"
+              loading="lazy"
+            />
+            <iframe
+              v-else-if="isPdfAttachment"
+              :src="attachmentUrl"
+              class="h-[78vh] w-full bg-white"
+              :title="task.file_name"
+              loading="lazy"
+            ></iframe>
+            <div v-else class="p-8 text-center">
+              <p class="text-sm font-bold text-ink">Preview tidak tersedia</p>
+              <p class="mt-1 text-xs text-ink-muted">{{ task.file_name }}</p>
+              <a :href="attachmentUrl" target="_blank" rel="noopener" class="mt-4 inline-flex rounded-xl bg-ink px-4 py-2.5 text-sm font-bold text-sand-50">
+                Buka File
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Teleport>
   </div>
 </template>

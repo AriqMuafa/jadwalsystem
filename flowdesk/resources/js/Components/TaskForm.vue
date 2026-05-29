@@ -18,6 +18,23 @@ const dueDate = ref('');
 
 const predictedETA = ref(null);
 const autoTags = ref([]);
+const categoryOptions = [
+  { value: 'Kerja', label: 'Kerja' },
+  { value: 'Pribadi', label: 'Pribadi' },
+  { value: 'Belajar', label: 'Belajar' },
+  { value: 'Kesehatan', label: 'Kesehatan' },
+];
+const priorityOptions = [
+  { value: 'medium', label: 'Sedang' },
+  { value: 'high', label: 'Tinggi' },
+  { value: 'low', label: 'Rendah' },
+];
+const columnOptions = [
+  { value: 'pending', label: 'Pending' },
+  { value: 'today', label: 'Hari Ini' },
+  { value: 'on_progress', label: 'On Progress' },
+  { value: 'done', label: 'Selesai' },
+];
 
 const fileInputDesktop = ref(null);
 const fileInputModal = ref(null);
@@ -116,7 +133,8 @@ watch(title, (newTitle) => {
   }
 });
 
-const desktopSelectBg = "background-image:url('data:image/svg+xml,%3Csvg xmlns=\"http://www.w3.org/2000/svg\" width=\"12\" height=\"8\" fill=\"none\"%3E%3Cpath d=\"M1 1l5 5 5-5\" stroke=\"%236b6460%22 stroke-width=\"1.5\" stroke-linecap=\"round\"/%3E%3C/svg%3E');background-repeat:no-repeat;background-position:right 10px center;";
+const desktopSelectBg = "background-image:url('data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2212%22 height=%228%22 fill=%22none%22%3E%3Cpath d=%22M1 1l5 5 5-5%22 stroke=%22%236b6460%22 stroke-width=%221.5%22 stroke-linecap=%22round%22/%3E%3C/svg%3E');background-repeat:no-repeat;background-position:right 12px center;";
+const selectControlClass = 'w-full rounded-xl border border-sand-200 bg-white px-3 py-2.5 pr-9 text-sm font-medium text-ink shadow-sm outline-none transition focus:border-ink/30 focus:ring-2 focus:ring-ink/10';
 </script>
 
 <template>
@@ -137,11 +155,8 @@ const desktopSelectBg = "background-image:url('data:image/svg+xml,%3Csvg xmlns=\
       </div>
     </div>
     
-    <select v-model="category" class="px-3 py-2.5 rounded-xl border border-sand-200 bg-white text-sm focus:outline-none text-ink appearance-none pr-7" :style="desktopSelectBg">
-      <option value="Kerja">Kerja</option>
-      <option value="Pribadi">Pribadi</option>
-      <option value="Belajar">Belajar</option>
-      <option value="Kesehatan">Kesehatan</option>
+    <select v-model="category" class="min-w-28 appearance-none" :class="selectControlClass" :style="desktopSelectBg" aria-label="Kategori">
+      <option v-for="option in categoryOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
     </select>
     
     <input type="datetime-local" v-model="dueDate" title="Tenggat Waktu" class="px-3 py-2.5 rounded-xl border border-sand-200 bg-white text-sm focus:outline-none text-ink-muted" />
@@ -181,27 +196,43 @@ const desktopSelectBg = "background-image:url('data:image/svg+xml,%3Csvg xmlns=\
     </div>
 
     <div class="grid grid-cols-2 gap-3">
-      <select v-model="category" class="px-3 py-2.5 rounded-xl border border-sand-200 bg-white text-sm focus:outline-none text-ink appearance-none pr-7" :style="desktopSelectBg">
-        <option value="Kerja">Kerja</option>
-        <option value="Pribadi">Pribadi</option>
-        <option value="Belajar">Belajar</option>
-        <option value="Kesehatan">Kesehatan</option>
-      </select>
-      <select v-model="priority" class="px-3 py-2.5 rounded-xl border border-sand-200 bg-white text-sm focus:outline-none text-ink appearance-none pr-7" :style="desktopSelectBg">
-        <option value="medium">Prioritas Sedang</option>
-        <option value="high">Prioritas Tinggi</option>
-        <option value="low">Prioritas Rendah</option>
-      </select>
+      <label class="group block rounded-2xl border border-sand-200 bg-sand-50 p-2.5 transition focus-within:border-ink/30 focus-within:bg-white focus-within:ring-2 focus-within:ring-ink/10">
+        <span class="mb-1.5 flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-ink-muted">
+          <span class="h-1.5 w-1.5 rounded-full bg-sky"></span>
+          Kategori
+        </span>
+        <select v-model="category" class="appearance-none" :class="selectControlClass" :style="desktopSelectBg">
+          <option v-for="option in categoryOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
+        </select>
+      </label>
+      <label class="group block rounded-2xl border border-sand-200 bg-sand-50 p-2.5 transition focus-within:border-ink/30 focus-within:bg-white focus-within:ring-2 focus-within:ring-ink/10">
+        <span class="mb-1.5 flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-ink-muted">
+          <span class="h-1.5 w-1.5 rounded-full bg-amber"></span>
+          Prioritas
+        </span>
+        <select v-model="priority" class="appearance-none" :class="selectControlClass" :style="desktopSelectBg">
+          <option v-for="option in priorityOptions" :key="option.value" :value="option.value">Prioritas {{ option.label }}</option>
+        </select>
+      </label>
     </div>
 
     <div class="grid grid-cols-2 gap-3">
-      <input type="datetime-local" v-model="dueDate" title="Tenggat Waktu" class="px-3 py-2.5 rounded-xl border border-sand-200 bg-white text-sm focus:outline-none text-ink-muted" />
-      <select v-model="column" class="px-3 py-2.5 rounded-xl border border-sand-200 bg-white text-sm focus:outline-none text-ink appearance-none pr-7" :style="desktopSelectBg">
-        <option value="pending">→ Pending</option>
-        <option value="today">→ Hari Ini</option>
-        <option value="on_progress">→ On Progress</option>
-        <option value="done">→ Selesai</option>
-      </select>
+      <label class="group block rounded-2xl border border-sand-200 bg-sand-50 p-2.5 transition focus-within:border-ink/30 focus-within:bg-white focus-within:ring-2 focus-within:ring-ink/10">
+        <span class="mb-1.5 flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-ink-muted">
+          <span class="h-1.5 w-1.5 rounded-full bg-sage"></span>
+          Tenggat
+        </span>
+        <input type="datetime-local" v-model="dueDate" title="Tenggat Waktu" :class="selectControlClass" />
+      </label>
+      <label class="group block rounded-2xl border border-sand-200 bg-sand-50 p-2.5 transition focus-within:border-ink/30 focus-within:bg-white focus-within:ring-2 focus-within:ring-ink/10">
+        <span class="mb-1.5 flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-ink-muted">
+          <span class="h-1.5 w-1.5 rounded-full bg-ink-muted"></span>
+          Kolom
+        </span>
+        <select v-model="column" class="appearance-none" :class="selectControlClass" :style="desktopSelectBg">
+          <option v-for="option in columnOptions" :key="option.value" :value="option.value">→ {{ option.label }}</option>
+        </select>
+      </label>
     </div>
 
     <div class="flex items-center justify-between gap-3 mt-1 pt-3 border-t border-sand-100">

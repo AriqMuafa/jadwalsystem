@@ -178,13 +178,20 @@ class TaskController extends Controller
     {
         abort_unless($this->canAccessTask($task), 403);
 
-        // Sesuaikan nama tabel dan kolom dengan struktur database Anda
+        $limit = min(max((int) request('limit', 10), 1), 30);
+        $offset = max((int) request('offset', 0), 0);
+
         $logs = DB::table('activity_logs')
             ->where('task_id', $task->id)
             ->orderBy('created_at', 'desc')
+            ->offset($offset)
+            ->limit($limit + 1)
             ->get();
 
-        return response()->json($logs);
+        return response()->json([
+            'logs' => $logs->take($limit)->values(),
+            'has_more' => $logs->count() > $limit,
+        ]);
     }
 
     public function attachment(Task $task)

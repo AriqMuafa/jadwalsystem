@@ -51,9 +51,9 @@ class TaskObserver
     }
 
     /**
-     * Handle the Task "deleted" event.
+     * Handle the Task "deleting" event.
      */
-    public function deleted(Task $task): void
+    public function deleting(Task $task): void
     {
         ActivityLog::create([
             'task_id' => $task->id,
@@ -61,6 +61,14 @@ class TaskObserver
             'action' => 'deleted',
             'description' => "Task deleted: {$task->title}",
         ]);
+    }
+
+    /**
+     * Handle the Task "deleted" event.
+     */
+    public function deleted(Task $task): void
+    {
+        //
     }
 
     /**

@@ -102,6 +102,10 @@ export const useTaskStore = defineStore('tasks', {
     detailModalOpen: false,
     selectedTaskDetail: null,
     taskLogs: [],
+    taskLogsById: {},
+    taskLogsHasMoreById: {},
+    taskLogsHasMore: false,
+    isLoadingTaskLogs: false,
     isOnline: typeof navigator === 'undefined' ? true : navigator.onLine,
     offlineReadOnly: false,
     activeWorkspace: null,
@@ -862,24 +866,48 @@ export const useTaskStore = defineStore('tasks', {
     async openDetailModal(task) {
       this.selectedTaskDetail = task;
       this.detailModalOpen = true;
-      this.taskLogs = []; // Kosongkan log lama sebelum memuat yang baru
+      this.taskLogs = this.taskLogsById[task.id] || [];
+      this.taskLogsHasMore = this.taskLogsHasMoreById[task.id] ?? false;
+      this.isLoadingTaskLogs = false;
+    },
+    async fetchTaskLogs(task = this.selectedTaskDetail, { append = false } = {}) {
+      if (!task || this.isLoadingTaskLogs) return;
+      if (!append && this.taskLogsById[task.id]) {
+        this.taskLogs = this.taskLogsById[task.id];
+        this.taskLogsHasMore = this.taskLogsHasMoreById[task.id] ?? false;
+        return;
+      }
 
       if (String(task.id).startsWith('tmp-') || String(task.id).startsWith('draft-') || !this.isOnline) {
         return;
       }
 
+      this.isLoadingTaskLogs = true;
+
       try {
-        // Asumsi Axios sudah terkonfigurasi bawaan Laravel
-        const response = await window.axios.get(`/tasks/${task.id}/logs`);
-        this.taskLogs = response.data;
+        const offset = append ? this.taskLogs.length : 0;
+        const response = await window.axios.get(`/tasks/${task.id}/logs`, {
+          params: { offset, limit: 10 },
+        });
+        const logs = Array.isArray(response.data) ? response.data : response.data.logs || [];
+        const mergedLogs = append ? [...this.taskLogs, ...logs] : logs;
+
+        this.taskLogs = mergedLogs;
+        this.taskLogsHasMore = Array.isArray(response.data) ? false : Boolean(response.data.has_more);
+        this.taskLogsById = { ...this.taskLogsById, [task.id]: mergedLogs };
+        this.taskLogsHasMoreById = { ...this.taskLogsHasMoreById, [task.id]: this.taskLogsHasMore };
       } catch (error) {
         console.error('Gagal mengambil audit trail:', error);
+      } finally {
+        this.isLoadingTaskLogs = false;
       }
     },
     closeDetailModal() {
       this.detailModalOpen = false;
       this.selectedTaskDetail = null;
       this.taskLogs = [];
+      this.taskLogsHasMore = false;
+      this.isLoadingTaskLogs = false;
     },
     initRealtime() {
       // Pastikan Echo sudah tersedia dari bootstrap.js

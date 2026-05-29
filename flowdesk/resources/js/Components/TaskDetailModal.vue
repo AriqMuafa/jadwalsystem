@@ -1,10 +1,12 @@
 <script setup>
-import { computed, reactive, watch } from 'vue';
+import { computed, reactive, ref, watch } from 'vue';
 import { useTaskStore } from '../Stores/useTaskStore';
 
 const store = useTaskStore();
 
 const task = computed(() => store.selectedTaskDetail);
+const activeTab = ref('detail');
+const isPdfPreviewOpen = ref(false);
 const editForm = reactive({
   title: '',
   category: 'Kerja',
@@ -25,6 +27,21 @@ const statusClasses = {
   today: 'bg-sage/15 text-sage',
   on_progress: 'bg-sky/15 text-sky',
   done: 'bg-sand-200 text-ink-muted',
+};
+
+const tabs = [
+  { id: 'detail', label: 'Detail' },
+  { id: 'attachment', label: 'Lampiran' },
+  { id: 'history', label: 'Riwayat' },
+];
+
+const setActiveTab = (tab) => {
+  activeTab.value = tab;
+  isPdfPreviewOpen.value = false;
+
+  if (tab === 'history') {
+    store.fetchTaskLogs();
+  }
 };
 
 const attachmentUrl = computed(() => {
@@ -101,16 +118,20 @@ const saveTask = () => {
   });
 };
 
-watch(task, resetEditForm, { immediate: true });
+watch(task, () => {
+  activeTab.value = 'detail';
+  isPdfPreviewOpen.value = false;
+  resetEditForm();
+}, { immediate: true });
 </script>
 
 <template>
   <div
     v-if="store.detailModalOpen"
-    class="fixed inset-0 z-50 flex items-center justify-center bg-ink/30 backdrop-blur-sm p-4 transition-opacity"
+    class="fixed inset-0 z-50 flex items-center justify-center bg-ink/30 p-4 transition-opacity md:backdrop-blur-sm"
     @click="store.closeDetailModal()"
   >
-    <div class="bg-white rounded-2xl shadow-xl w-full max-w-5xl flex flex-col max-h-[88vh] overflow-hidden" @click.stop>
+    <div class="bg-white rounded-2xl shadow-xl w-full max-w-3xl flex flex-col max-h-[88vh] overflow-hidden" @click.stop>
       <div class="p-4 border-b border-sand-200 flex items-center justify-between bg-sand-50">
         <div class="min-w-0 pr-4">
           <h3 class="text-sm font-bold text-ink truncate">Detail Tugas</h3>
@@ -123,8 +144,23 @@ watch(task, resetEditForm, { immediate: true });
         </button>
       </div>
 
-      <div class="grid grid-cols-1 lg:grid-cols-[1.15fr_0.85fr] overflow-y-auto flex-1">
-        <section class="p-5 lg:border-r border-sand-200">
+      <div class="border-b border-sand-200 bg-white px-4 py-3">
+        <div class="grid grid-cols-3 gap-2 rounded-xl bg-sand-100 p-1">
+          <button
+            v-for="tab in tabs"
+            :key="tab.id"
+            type="button"
+            class="rounded-lg px-3 py-2 text-sm font-bold transition-colors"
+            :class="activeTab === tab.id ? 'bg-white text-ink shadow-sm' : 'text-ink-muted hover:text-ink'"
+            @click="setActiveTab(tab.id)"
+          >
+            {{ tab.label }}
+          </button>
+        </div>
+      </div>
+
+      <div class="flex-1 overflow-y-auto">
+        <section v-if="activeTab === 'detail'" class="p-5">
           <div class="mb-5">
             <div class="flex flex-wrap items-center gap-2 mb-3">
               <span class="text-xs px-2.5 py-1 rounded-full" :class="store.catColors[task?.category] || 'bg-sand-100 text-ink-muted'">
@@ -204,7 +240,7 @@ watch(task, resetEditForm, { immediate: true });
             </div>
           </form>
 
-          <div class="grid grid-cols-2 gap-3 mb-5">
+          <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div class="rounded-xl border border-sand-200 bg-sand-50 p-3">
               <p class="text-[11px] uppercase tracking-wider text-ink-muted font-bold mb-1">Dibuat Oleh</p>
               <p class="text-sm font-medium text-ink truncate">{{ task?.user?.name || 'Unknown' }}</p>
@@ -222,56 +258,65 @@ watch(task, resetEditForm, { immediate: true });
               <p class="text-sm font-medium text-ink">{{ formatDate(task?.updated_at) }}</p>
             </div>
           </div>
+        </section>
 
-          <div>
-            <h5 class="text-[11px] font-bold text-ink-muted uppercase tracking-wider mb-3">Lampiran</h5>
+        <section v-else-if="activeTab === 'attachment'" class="p-5">
+          <h5 class="text-[11px] font-bold text-ink-muted uppercase tracking-wider mb-3">Lampiran</h5>
 
-            <div v-if="attachmentUrl" class="rounded-xl border border-sand-200 bg-sand-50 overflow-hidden">
-              <div class="px-3 py-2 border-b border-sand-200 flex items-center justify-between gap-3">
-                <div class="min-w-0 flex items-center gap-2">
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="text-ink-muted shrink-0">
-                    <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
-                  </svg>
-                  <span class="text-sm font-medium text-ink truncate">{{ task?.file_name }}</span>
-                </div>
-                <a :href="attachmentUrl" target="_blank" rel="noopener" class="text-xs font-medium text-sky hover:underline shrink-0">
-                  Buka
-                </a>
+          <div v-if="attachmentUrl" class="rounded-xl border border-sand-200 bg-sand-50 overflow-hidden">
+            <div class="px-3 py-2 border-b border-sand-200 flex items-center justify-between gap-3">
+              <div class="min-w-0 flex items-center gap-2">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="text-ink-muted shrink-0">
+                  <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
+                </svg>
+                <span class="text-sm font-medium text-ink truncate">{{ task?.file_name }}</span>
               </div>
+              <a :href="attachmentUrl" target="_blank" rel="noopener" class="text-xs font-medium text-sky hover:underline shrink-0">
+                Buka
+              </a>
+            </div>
 
-              <div class="bg-white min-h-[260px] flex items-center justify-center">
-                <img
-                  v-if="isImageAttachment"
-                  :src="attachmentUrl"
-                  :alt="task?.file_name"
-                  class="max-h-[420px] w-full object-contain bg-white"
-                />
-                <iframe
-                  v-else-if="isPdfAttachment"
-                  :src="attachmentUrl"
-                  class="w-full h-[420px] bg-white"
-                  :title="task?.file_name"
-                ></iframe>
-                <div v-else class="p-8 text-center">
-                  <p class="text-sm font-medium text-ink">Preview tidak tersedia</p>
-                  <p class="text-xs text-ink-muted mt-1">{{ task?.file_name }}</p>
-                </div>
+            <div class="bg-white min-h-[320px] flex items-center justify-center">
+              <img
+                v-if="isImageAttachment"
+                :src="attachmentUrl"
+                :alt="task?.file_name"
+                class="max-h-[62vh] w-full object-contain bg-white"
+                loading="lazy"
+              />
+              <div v-else-if="isPdfAttachment && !isPdfPreviewOpen" class="p-8 text-center">
+                <p class="text-sm font-medium text-ink">PDF siap dipreview</p>
+                <p class="text-xs text-ink-muted mt-1">{{ task?.file_name }}</p>
+                <button class="mt-4 rounded-xl bg-ink px-4 py-2.5 text-sm font-bold text-sand-50" @click="isPdfPreviewOpen = true">
+                  Preview PDF
+                </button>
+              </div>
+              <iframe
+                v-else-if="isPdfAttachment && isPdfPreviewOpen"
+                :src="attachmentUrl"
+                class="w-full h-[62vh] bg-white"
+                :title="task?.file_name"
+                loading="lazy"
+              ></iframe>
+              <div v-else class="p-8 text-center">
+                <p class="text-sm font-medium text-ink">Preview tidak tersedia</p>
+                <p class="text-xs text-ink-muted mt-1">{{ task?.file_name }}</p>
               </div>
             </div>
+          </div>
 
-            <div v-else-if="hasOfflineAttachment" class="rounded-xl border border-amber/30 bg-amber/10 p-4">
-              <p class="text-sm font-medium text-ink">Lampiran tersimpan offline</p>
-              <p class="mt-1 text-xs text-ink-muted">{{ task?.file_name }}</p>
-              <p class="mt-2 text-xs text-amber">Preview tersedia setelah draft dikirim saat online.</p>
-            </div>
+          <div v-else-if="hasOfflineAttachment" class="rounded-xl border border-amber/30 bg-amber/10 p-4">
+            <p class="text-sm font-medium text-ink">Lampiran tersimpan offline</p>
+            <p class="mt-1 text-xs text-ink-muted">{{ task?.file_name }}</p>
+            <p class="mt-2 text-xs text-amber">Preview tersedia setelah draft dikirim saat online.</p>
+          </div>
 
-            <div v-else class="rounded-xl border border-dashed border-sand-200 bg-sand-50 p-6 text-sm text-ink-muted italic">
-              Tidak ada lampiran.
-            </div>
+          <div v-else class="rounded-xl border border-dashed border-sand-200 bg-sand-50 p-6 text-sm text-ink-muted italic">
+            Tidak ada lampiran.
           </div>
         </section>
 
-        <section class="p-5 bg-white">
+        <section v-else class="p-5 bg-white">
           <div class="mb-5">
             <h5 class="text-[11px] font-bold text-ink-muted uppercase tracking-wider mb-3">Ringkasan Tugas</h5>
             <div class="rounded-xl border border-sand-200 bg-sand-50 p-4 space-y-3">
@@ -292,8 +337,12 @@ watch(task, resetEditForm, { immediate: true });
 
           <h5 class="text-[11px] font-bold text-ink-muted uppercase tracking-wider mb-4">Audit Trail</h5>
 
-          <div v-if="store.taskLogs.length === 0" class="text-sm text-sand-400 italic py-4 border-l-2 border-sand-100 pl-4">
-            Memuat riwayat atau belum ada pergerakan...
+          <div v-if="store.isLoadingTaskLogs" class="text-sm text-sand-400 italic py-4 border-l-2 border-sand-100 pl-4">
+            Memuat riwayat...
+          </div>
+
+          <div v-else-if="store.taskLogs.length === 0" class="text-sm text-sand-400 italic py-4 border-l-2 border-sand-100 pl-4">
+            Belum ada riwayat untuk tugas ini.
           </div>
 
           <div v-else class="relative border-l-2 border-sand-200 ml-1.5 space-y-5 pb-2">
@@ -305,6 +354,16 @@ watch(task, resetEditForm, { immediate: true });
               </time>
             </div>
           </div>
+
+          <button
+            v-if="store.taskLogsHasMore"
+            type="button"
+            class="mt-5 w-full rounded-xl border border-sand-200 bg-white px-4 py-2.5 text-sm font-bold text-ink-muted hover:bg-sand-50 disabled:cursor-not-allowed disabled:opacity-60"
+            :disabled="store.isLoadingTaskLogs"
+            @click="store.fetchTaskLogs(undefined, { append: true })"
+          >
+            {{ store.isLoadingTaskLogs ? 'Memuat...' : 'Muat Riwayat Lagi' }}
+          </button>
         </section>
       </div>
     </div>
