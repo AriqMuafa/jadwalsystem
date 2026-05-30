@@ -175,6 +175,11 @@ const handlePwaOfflineReady = () => {
   }, 5000);
 };
 
+const handleCalendarDateSelect = (dateKey) => {
+  store.highlightDueDate(dateKey);
+  closeOffCanvas();
+};
+
 const handleBackdropClick = (e) => {
   if (e.target?.id === 'modal-backdrop') closeModal();
 };
@@ -384,7 +389,7 @@ onUnmounted(() => {
 
         <div class="mb-6">
           <div class="bg-white rounded-xl border border-sand-200 p-4 shadow-card">
-            <MiniCalendar :tasks="store.tasks" />
+            <MiniCalendar :tasks="store.activeTasks" @select-date="handleCalendarDateSelect" />
           </div>
         </div>
         <hr class="border-sand-200 mb-6" />
@@ -650,7 +655,7 @@ onUnmounted(() => {
       <aside id="sidebar" class="hidden md:flex flex-col w-64 lg:w-72 border-r border-sand-200 bg-sand-50 overflow-y-auto shrink-0 p-5 gap-6">
         <div class="mb-6">
           <div class="bg-white rounded-xl border border-sand-200 p-4 shadow-card">
-            <MiniCalendar :tasks="store.tasks" />
+            <MiniCalendar :tasks="store.activeTasks" @select-date="handleCalendarDateSelect" />
           </div>
         </div>
         <hr class="border-sand-200" />
@@ -863,5 +868,5 @@ onUnmounted(() => {
       <div class="w-px h-4 bg-sand-700 shrink-0"></div>
       <button @click="store.clearSelection()" class="shrink-0 text-sm text-sand-400 hover:text-sand-50 transition-colors">Batal</button>
     </div>
-    <ChatWidget v-show="!isModalOpen" :task="activeChatTask" @close="activeChatTask = null" />
+    <ChatWidget v-show="!isModalOpen && !store.detailModalOpen" :task="activeChatTask" @close="activeChatTask = null" />
 </template>

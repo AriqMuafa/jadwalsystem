@@ -31,6 +31,12 @@ const catColors = {
 
 const offlineDbName = 'flowdesk-offline';
 const offlineAttachmentStore = 'draft-attachments';
+let highlightedDueDateTimer = null;
+const storedBoardViewMode = () => {
+  if (typeof localStorage === 'undefined') return 'tabs';
+
+  return localStorage.getItem('flowdesk:board-view-mode') || 'tabs';
+};
 
 const openOfflineDb = () => new Promise((resolve, reject) => {
   const request = indexedDB.open(offlineDbName, 1);
@@ -99,6 +105,8 @@ export const useTaskStore = defineStore('tasks', {
     activeTab: 'pending',
     isMobile: false,
     selectedTasks: [],
+    boardViewMode: storedBoardViewMode(),
+    highlightedDueDate: null,
     detailModalOpen: false,
     selectedTaskDetail: null,
     taskLogs: [],
@@ -116,23 +124,27 @@ export const useTaskStore = defineStore('tasks', {
     isAutoSyncingOffline: false,
   }),
   getters: {
-    categories: (state) => [...new Set(state.tasks.map((t) => t.category))],
+    activeTasks: (state) => state.tasks.filter((task) => !task.archived_at),
+    archivedTasks: (state) => state.tasks.filter((task) => task.archived_at),
+    categories: (state) => [...new Set(state.tasks.filter((task) => !task.archived_at).map((t) => t.category))],
     filteredTasks: (state) =>
       state.tasks.filter((t) => {
+        if (t.archived_at) return false;
         const catOk = state.activeCategories.length === 0 || state.activeCategories.includes(t.category);
         const priOk = state.activePriorities.length === 0 || state.activePriorities.includes(t.priority);
         return catOk && priOk;
       }),
-    tasksByColumn: (state) => (col) => state.tasks.filter((t) => t.column_status === col),
+    tasksByColumn: (state) => (col) => state.tasks.filter((t) => !t.archived_at && t.column_status === col),
     filteredByColumn: (state) => (col) =>
       state.tasks.filter((t) => {
+        if (t.archived_at) return false;
         const catOk = state.activeCategories.length === 0 || state.activeCategories.includes(t.category);
         const priOk = state.activePriorities.length === 0 || state.activePriorities.includes(t.priority);
         return catOk && priOk && t.column_status === col;
       }),
-    categoryCount: (state) => (cat) => state.tasks.filter((t) => t.category === cat).length,
-    priorityCount: (state) => (pri) => state.tasks.filter((t) => t.priority === pri).length,
-    columnCount: (state) => (col) => state.tasks.filter((t) => t.column_status === col).length,
+    categoryCount: (state) => (cat) => state.tasks.filter((t) => !t.archived_at && t.category === cat).length,
+    priorityCount: (state) => (pri) => state.tasks.filter((t) => !t.archived_at && t.priority === pri).length,
+    columnCount: (state) => (col) => state.tasks.filter((t) => !t.archived_at && t.column_status === col).length,
     priorityLabel: () => priorityLabel,
     priorityDot: () => priorityDot,
     priorityClass: () => priorityClass,
@@ -307,6 +319,38 @@ export const useTaskStore = defineStore('tasks', {
     },
     setActiveTab(tab) {
       this.activeTab = tab;
+    },
+    setBoardViewMode(mode) {
+      if (!['tabs', 'scroll', 'all'].includes(mode)) return;
+
+      this.boardViewMode = mode;
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem('flowdesk:board-view-mode', mode);
+      }
+    },
+    taskDateKey(value) {
+      if (!value) return null;
+
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return null;
+
+      const pad = (num) => String(num).padStart(2, '0');
+      return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+    },
+    highlightDueDate(dateKey) {
+      this.highlightedDueDate = dateKey;
+
+      if (highlightedDueDateTimer) {
+        clearTimeout(highlightedDueDateTimer);
+      }
+
+      highlightedDueDateTimer = setTimeout(() => {
+        this.highlightedDueDate = null;
+        highlightedDueDateTimer = null;
+      }, 5000);
+    },
+    isTaskDueDateHighlighted(task) {
+      return Boolean(this.highlightedDueDate && this.taskDateKey(task?.due_date) === this.highlightedDueDate);
     },
     toggleCategory(category, checked) {
       if (checked && !this.activeCategories.includes(category)) {
@@ -554,6 +598,50 @@ export const useTaskStore = defineStore('tasks', {
         preserveScroll: true,
         onError: () => {
           this.tasks = previous;
+        },
+      });
+    },
+    archiveTask(id) {
+      const task = this.tasks.find((item) => item.id === id);
+      if (!task || task.archived_at) return;
+
+      if (String(id).startsWith('draft-')) {
+        this.deleteTask(id);
+        return;
+      }
+
+      if (!this.isOnline) {
+        alert('Arsip membutuhkan koneksi internet.');
+        return;
+      }
+
+      const previous = task.archived_at;
+      task.archived_at = new Date().toISOString();
+      this.selectedTasks = this.selectedTasks.filter((taskId) => taskId !== id);
+
+      router.patch(`/tasks/${id}/archive`, {}, {
+        preserveScroll: true,
+        onError: () => {
+          task.archived_at = previous;
+        },
+      });
+    },
+    restoreTask(id) {
+      const task = this.tasks.find((item) => item.id === id);
+      if (!task || !task.archived_at) return;
+
+      if (!this.isOnline) {
+        alert('Pulihkan arsip membutuhkan koneksi internet.');
+        return;
+      }
+
+      const previous = task.archived_at;
+      task.archived_at = null;
+
+      router.patch(`/tasks/${id}/restore`, {}, {
+        preserveScroll: true,
+        onError: () => {
+          task.archived_at = previous;
         },
       });
     },

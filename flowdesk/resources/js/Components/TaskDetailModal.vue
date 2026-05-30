@@ -128,7 +128,7 @@ watch(task, () => {
 <template>
   <div
     v-if="store.detailModalOpen"
-    class="fixed inset-0 z-50 flex items-center justify-center bg-ink/30 p-4 transition-opacity md:backdrop-blur-sm"
+    class="fixed inset-0 z-[110] flex items-center justify-center bg-ink/30 p-4 transition-opacity md:backdrop-blur-sm"
     @click="store.closeDetailModal()"
   >
     <div class="bg-white rounded-2xl shadow-xl w-full max-w-3xl flex flex-col max-h-[88vh] overflow-hidden" @click.stop>

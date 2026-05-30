@@ -13,17 +13,35 @@ const columns = [
 ];
 
 const columnTasks = (col) => computed(() => store.filteredByColumn(col));
+const isColumnVisible = (col) => (
+  store.boardViewMode !== 'tabs'
+  || !store.isMobile
+  || store.activeTab === col
+);
 </script>
 
 <template>
-  <div id="kanban-board" class="flex-1 overflow-x-auto overflow-y-hidden relative">
-    <div class="flex h-full gap-4 p-4 md:p-6 w-full md:w-auto min-w-0">
+  <div
+    id="kanban-board"
+    class="flex-1 relative"
+    :class="store.boardViewMode === 'all' ? 'overflow-y-auto overflow-x-hidden' : 'overflow-x-auto overflow-y-hidden'"
+  >
+    <div
+      class="gap-4 p-4 md:p-6 min-w-0"
+      :class="store.boardViewMode === 'all'
+        ? 'grid min-h-full grid-cols-1 md:grid-cols-2 xl:grid-cols-4'
+        : 'flex h-full w-full md:w-auto'"
+    >
       <div
         v-for="col in columns"
         :key="col.key"
-        class="kanban-col-wrapper mobile-col w-full md:flex-1 flex-col"
+        class="kanban-col-wrapper mobile-col flex-col"
         :data-col="col.key"
-        :class="store.isMobile ? (store.activeTab === col.key ? 'flex' : 'hidden') : 'flex'"
+        :class="[
+          isColumnVisible(col.key) ? 'flex' : 'hidden',
+          store.boardViewMode === 'scroll' ? 'w-[82vw] min-w-[18rem] md:w-full md:min-w-0 md:flex-1' : 'w-full md:flex-1',
+          store.boardViewMode === 'all' ? 'min-h-[24rem]' : ''
+        ]"
       >
         <div
           class="kanban-col flex-1 rounded-xl2 flex flex-col overflow-hidden"

@@ -174,6 +174,25 @@ class TaskController extends Controller
 
         return redirect()->back(); // <-- Ubah bagian ini
     }
+
+    public function archive(Task $task)
+    {
+        abort_unless($this->canAccessTask($task), 403);
+
+        $task->update(['archived_at' => now()]);
+
+        return redirect()->back();
+    }
+
+    public function restore(Task $task)
+    {
+        abort_unless($this->canAccessTask($task), 403);
+
+        $task->update(['archived_at' => null]);
+
+        return redirect()->back();
+    }
+
     public function logs(Task $task)
     {
         abort_unless($this->canAccessTask($task), 403);

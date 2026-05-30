@@ -16,6 +16,7 @@ const quickMoveTargets = (task) => ['pending', 'today', 'on_progress', 'done'].f
 const didDrag = ref(false);
 const suppressNextClick = ref(false);
 const attachmentPreviewOpen = ref(false);
+const isDueHighlighted = computed(() => store.isTaskDueDateHighlighted(props.task));
 let longPressTimer = null;
 
 // --- Time Tracking Logic ---
@@ -198,6 +199,7 @@ const handleDragEnd = () => {
     class="task-card bg-white rounded-xl shadow-card p-3.5 select-none transition-all cursor-pointer"
     :class="[
       store.priorityClass[task.priority], 
+      isDueHighlighted ? 'bg-amber-light/60 ring-2 ring-amber ring-offset-2' : '',
       store.selectedTasks.includes(task.id) ? 'ring-2 ring-ink ring-offset-2 scale-[0.98]' : ''
     ]"
     draggable="true"
@@ -219,6 +221,20 @@ const handleDragEnd = () => {
       <span class="text-[11px] font-medium text-ink-muted flex-1 truncate">
         {{ task.is_offline_draft ? 'Draft Offline' : creatorName }}
       </span>
+
+      <button
+        v-if="task.column_status === 'done'"
+        class="shrink-0 w-6 h-6 flex items-center justify-center rounded-lg text-ink-muted hover:bg-sand-100 hover:text-sage transition-colors"
+        title="Arsipkan"
+        @pointerdown.stop
+        @click.stop="store.archiveTask(task.id)"
+      >
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="4" width="18" height="4" rx="1" />
+          <path d="M5 8v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8" />
+          <path d="M10 12h4" />
+        </svg>
+      </button>
 
       <button
         class="shrink-0 w-5 h-5 flex items-center justify-center text-sand-300 hover:text-rose transition-colors"

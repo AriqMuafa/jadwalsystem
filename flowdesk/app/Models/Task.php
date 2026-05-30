@@ -21,6 +21,7 @@ class Task extends Model
         'tags',
         'time_spent',
         'due_date',
+        'archived_at',
         'attachment_path',
         'file_name', // <-- PASTIKAN BARIS INI DITAMBAHKAN
     ];
@@ -28,6 +29,7 @@ class Task extends Model
     protected $casts = [
         'tags' => 'array',
         'due_date' => 'datetime',
+        'archived_at' => 'datetime',
     ];
 
     public function user(): BelongsTo

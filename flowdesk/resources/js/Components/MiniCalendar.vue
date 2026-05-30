@@ -4,6 +4,7 @@ import { computed } from 'vue';
 const props = defineProps({
   tasks: { type: Array, default: () => [] },
 });
+const emit = defineEmits(['select-date']);
 
 const monthNames = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
 const dayNames = ['M', 'S', 'S', 'R', 'K', 'J', 'S'];
@@ -68,6 +69,15 @@ const calendar = computed(() => {
 const dayTasks = (day) => calendar.value.tasksByDay.get(day) || [];
 const visibleDots = (day) => dayTasks(day).slice(0, 3);
 const hiddenCount = (day) => Math.max(dayTasks(day).length - 3, 0);
+const dateKey = (day) => {
+  const pad = (num) => String(num).padStart(2, '0');
+  return `${calendar.value.year}-${pad(calendar.value.month + 1)}-${pad(day)}`;
+};
+const selectDay = (day) => {
+  if (dayTasks(day).length === 0) return;
+
+  emit('select-date', dateKey(day));
+};
 </script>
 
 <template>
@@ -98,13 +108,16 @@ const hiddenCount = (day) => Math.max(dayTasks(day).length - 3, 0);
       <div
         v-for="d in calendar.daysInMonth"
         :key="`day-${d}`"
-        class="cal-day group relative h-8 rounded-lg flex flex-col items-center justify-center cursor-default transition-colors"
+        class="cal-day group relative h-8 rounded-lg flex flex-col items-center justify-center transition-colors"
         :class="{
           today: d === calendar.today,
-          'has-task bg-sand-100/70 hover:bg-sand-200/70': dayTasks(d).length > 0 && d !== calendar.today,
+          'has-task cursor-pointer bg-sand-100/70 hover:bg-sand-200/70': dayTasks(d).length > 0 && d !== calendar.today,
           'hover:bg-sand-100': dayTasks(d).length === 0 && d !== calendar.today,
+          'cursor-pointer': dayTasks(d).length > 0 && d === calendar.today,
+          'cursor-default': dayTasks(d).length === 0,
         }"
         :title="dayTasks(d).length > 0 ? `${dayTasks(d).length} tugas jatuh tempo` : ''"
+        @click="selectDay(d)"
       >
         <span class="text-xs font-medium leading-none">{{ d }}</span>
         <div v-if="dayTasks(d).length > 0" class="absolute bottom-1 flex items-center justify-center gap-0.5">

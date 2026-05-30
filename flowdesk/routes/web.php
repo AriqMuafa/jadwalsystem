@@ -28,6 +28,8 @@ Route::middleware('auth')->group(function () {
     Route::post('/tasks', [TaskController::class, 'store']);
     Route::patch('/tasks/{task}', [TaskController::class, 'update']);
     Route::patch('/tasks/{task}/move', [TaskController::class, 'move']);
+    Route::patch('/tasks/{task}/archive', [TaskController::class, 'archive']);
+    Route::patch('/tasks/{task}/restore', [TaskController::class, 'restore']);
     Route::delete('/tasks/{task}', [TaskController::class, 'destroy']);
     Route::get('/tasks/{task}/attachment', [TaskController::class, 'attachment'])->name('tasks.attachment');
 
